@@ -5,7 +5,7 @@ import json
 class Settings(BaseSettings):
     # Retriva Client
     retriva_adapter: str = "gateway_http"
-    retriva_timeout_seconds: int = 60
+    retriva_timeout_seconds: int = 120
     retriva_default_top_k: int = 5
     
     # Gateway
@@ -37,6 +37,8 @@ class Settings(BaseSettings):
     qdrant_delete_on_completion: bool = False
     
     # LLM
+    openai_api_key: Optional[str] = None
+    openai_base_url: Optional[str] = None
     llm_provider: str = "openai"
     llm_model: str = "gpt-4o-mini"
     

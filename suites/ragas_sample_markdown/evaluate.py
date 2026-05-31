@@ -22,7 +22,7 @@ def do_evaluate(suite_name: str, settings: Settings, run_id: str, dry_run: bool)
         logger.info("[Dry Run] Mocking Ragas evaluation metrics.")
         metrics = {m: 0.80 for m in metrics_list}
     else:
-        ragas = RagasAdapter(metrics_list)
+        ragas = RagasAdapter(settings, metrics_list)
         metrics = ragas.evaluate(predictions, queries)
         
     # Calculate status based on thresholds

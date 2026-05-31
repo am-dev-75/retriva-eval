@@ -41,20 +41,22 @@ class GatewayHttpClient(BaseRetrivaClient):
         try:
             with httpx.Client(timeout=self.settings.retriva_timeout_seconds) as client:
                 payload = {
-                    "query": query_record.question,
-                    "top_k": self.settings.retriva_default_top_k,
-                    "metadata_filter": {
+                    "message": query_record.question,
+                    "kb_ids": [self.settings.eval_knowledge_base],
+                    "filters": {
                         "run_id": run_id,
                         "suite": query_record.suite
-                    }
+                    },
+                    "metadata_filter_mode": self.settings.eval_metadata_filtering_mode,
+                    "stream": False
                 }
                 
                 response = client.post(self.chat_url, json=payload)
                 response.raise_for_status()
                 data = response.json()
                 
-                answer = data.get("answer", "")
-                for idx, ctx in enumerate(data.get("contexts", [])):
+                answer = data.get("content", "")
+                for idx, ctx in enumerate(data.get("citations", [])):
                     retrieved_contexts.append(
                         RetrievedContext(
                             id=ctx.get("id", f"ctx_{idx}"),
@@ -116,9 +118,32 @@ class GatewayHttpClient(BaseRetrivaClient):
                     data = {
                         "source_path": file_path,
                         "user_metadata": json.dumps(metadata),
+                        "kb_id": self.settings.eval_knowledge_base,
                     }
                     resp = client.post(upload_url, files=files, data=data)
                     resp.raise_for_status()
+                    
+                # Step 3: Wait for ingestion to complete
+                batch_status_url = f"{self.ingestion_base}/batches/{batch_id}"
+                for _ in range(30):
+                    resp = client.get(batch_status_url)
+                    resp.raise_for_status()
+                    batch_data = resp.json()
+                    
+                    files_list = batch_data.get("files", [])
+                    if not files_list:
+                        break
+                        
+                    all_done = True
+                    for f in files_list:
+                        if f.get("status") not in ["completed", "failed", "error"]:
+                            all_done = False
+                            break
+                            
+                    if all_done:
+                        break
+                        
+                    time.sleep(2.0)
                     
                 logger.info(f"Successfully ingested {file_path} via Gateway (batch {batch_id}).")
         except Exception as e:
@@ -209,9 +234,21 @@ class CoreOpenAIClient(BaseRetrivaClient):
                     data = {
                         "source_path": file_path,
                         "user_metadata": json.dumps(metadata),
+                        "kb_id": self.settings.eval_knowledge_base,
                     }
                     response = client.post(self.ingest_url, files=files, data=data)
                     response.raise_for_status()
+                    
+                    job_id = response.json().get("job_id")
+                    if job_id:
+                        job_status_url = f"{self.ingest_base_url.rstrip('/')}/api/v2/jobs/{job_id}"
+                        for _ in range(30):
+                            resp = client.get(job_status_url)
+                            resp.raise_for_status()
+                            if resp.json().get("status") in ["completed", "failed", "error"]:
+                                break
+                            time.sleep(2.0)
+                            
                     logger.info(f"Successfully ingested {file_path} via Core.")
         except Exception as e:
             logger.error(f"Core OpenAI Error ingesting {file_path}: {e}")
