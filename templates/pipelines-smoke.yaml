@@ -1,0 +1,7 @@
+name: smoke
+max_samples: 5
+
+suites:
+  - name: ragas_sample_markdown
+    enabled: true
+    max_samples: 5

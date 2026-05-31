@@ -1,0 +1,32 @@
+name: ragas_sample_markdown
+version: 0.1.0
+
+dataset:
+  source: huggingface_git
+  repo: https://huggingface.co/datasets/vibrantlabsai/Sample_Docs_Markdown
+  local_dir: suites/ragas_sample_markdown/data/Sample_Docs_Markdown
+  glob: "**/*.md"
+
+chunking:
+  chunk_size: 800
+  chunk_overlap: 120
+
+testset:
+  mode: generate_if_missing
+  size: 25
+  output_path: suites/ragas_sample_markdown/data/testset.jsonl
+
+retrieval:
+  top_k: 5
+
+metrics:
+  - faithfulness
+  - answer_relevancy
+  - context_precision
+  - context_recall
+
+thresholds:
+  faithfulness: 0.75
+  answer_relevancy: 0.70
+  context_precision: 0.70
+  context_recall: 0.70

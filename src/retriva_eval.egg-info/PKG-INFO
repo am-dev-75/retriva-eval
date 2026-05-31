@@ -1,0 +1,43 @@
+Metadata-Version: 2.4
+Name: retriva-eval
+Version: 0.1.0
+Summary: Continuous evaluation and regression-testing framework for Retriva.
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: typer>=0.9.0
+Requires-Dist: pydantic>=2.4.0
+Requires-Dist: pyyaml>=6.0.1
+Requires-Dist: qdrant-client>=1.6.0
+Requires-Dist: ragas>=0.1.0
+Requires-Dist: httpx>=0.25.0
+Requires-Dist: datasets>=2.14.0
+Requires-Dist: rich>=13.0.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.0; extra == "dev"
+Requires-Dist: ruff>=0.1.0; extra == "dev"
+
+# retriva-eval SDD Pack for Google Antigravity
+
+This pack contains the Software Design Documentation and Antigravity-ready agent instructions for creating the initial `retriva-eval` repository.
+
+Initial scope:
+
+- Create the `retriva-eval` Python repository.
+- Implement the first suite: `ragas_sample_markdown`.
+- Support a manually-created Qdrant collection dedicated to evaluation.
+- Run a smoke evaluation cycle against Retriva.
+- Produce normalized JSONL outputs and summary reports.
+
+Out of scope for the first implementation:
+
+- Programmatic creation/deletion of per-suite Qdrant collections.
+- Additional public benchmark suites such as RAGBench, Open RAG Benchmark, or T²-RAGBench.
+- Production dashboards.
+
+Recommended Antigravity usage:
+
+1. Open an empty workspace named `retriva-eval`.
+2. Copy this pack into the workspace root or attach it as context.
+3. Ask Antigravity to execute `.agents/workflows/implement_mvp.md`.
+4. Review generated plan, diffs, tests, and artifacts before approving changes.
