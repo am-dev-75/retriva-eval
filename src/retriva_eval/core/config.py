@@ -15,9 +15,10 @@ class Settings(BaseSettings):
     gateway_kbs_path: str = "/gateway/kbs"
     
     # Core
-    core_base_url: str = "http://localhost:8000"
+    core_chat_base_url: str = "http://localhost:8001"
+    core_ingestion_base_url: str = "http://localhost:8000"
     core_chat_path: str = "/v1/chat/completions"
-    core_ingestion_path: str = "/v1/ingest"
+    core_ingestion_path: str = "/api/v2/documents/upload"
     
     # Evaluation
     eval_knowledge_base: str = "eval-ragas-sample-markdown"

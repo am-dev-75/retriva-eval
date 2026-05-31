@@ -87,13 +87,13 @@ class GatewayHttpClient(BaseRetrivaClient):
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"File not found: {file_path}")
             
-        kb = self.config.evaluation.knowledge_base
-        metadata = self.config.evaluation.metadata.copy()
+        kb = self.settings.eval_knowledge_base
+        metadata = self.settings.parsed_eval_metadata.copy()
         metadata["run_id"] = run_id
         metadata["document_id"] = document_id
         
         try:
-            with httpx.Client(timeout=self.config.timeout_seconds) as client:
+            with httpx.Client(timeout=self.settings.retriva_timeout_seconds) as client:
                 with open(file_path, "rb") as f:
                     files = {"file": (os.path.basename(file_path), f, "text/markdown")}
                     data = {"knowledge_base": kb, "metadata": str(metadata)}
@@ -108,9 +108,10 @@ class GatewayHttpClient(BaseRetrivaClient):
 class CoreOpenAIClient(BaseRetrivaClient):
     def __init__(self, settings: Settings):
         super().__init__(settings)
-        self.base_url = self.settings.core_base_url
-        self.chat_url = f"{self.base_url.rstrip('/')}{self.settings.core_chat_path}"
-        self.ingest_url = f"{self.base_url.rstrip('/')}{self.settings.core_ingestion_path}"
+        self.chat_base_url = self.settings.core_chat_base_url
+        self.ingest_base_url = self.settings.core_ingestion_base_url
+        self.chat_url = f"{self.chat_base_url.rstrip('/')}{self.settings.core_chat_path}"
+        self.ingest_url = f"{self.ingest_base_url.rstrip('/')}{self.settings.core_ingestion_path}"
 
     def query(self, query_record: QueryRecord, run_id: str) -> PredictionRecord:
         start_time = time.time()
@@ -172,13 +173,13 @@ class CoreOpenAIClient(BaseRetrivaClient):
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"File not found: {file_path}")
             
-        kb = self.config.evaluation.knowledge_base
-        metadata = self.config.evaluation.metadata.copy()
+        kb = self.settings.eval_knowledge_base
+        metadata = self.settings.parsed_eval_metadata.copy()
         metadata["run_id"] = run_id
         metadata["document_id"] = document_id
         
         try:
-            with httpx.Client(timeout=self.config.timeout_seconds) as client:
+            with httpx.Client(timeout=self.settings.retriva_timeout_seconds) as client:
                 with open(file_path, "rb") as f:
                     files = {"file": (os.path.basename(file_path), f, "text/markdown")}
                     data = {"knowledge_base": kb, "metadata": str(metadata)}
