@@ -9,4 +9,4 @@ reports/
 suites/*/data/
 !suites/*/data/.gitkeep
 .env
-*.egg-info/
+**/*.egg-info/

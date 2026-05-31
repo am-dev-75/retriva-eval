@@ -1,2 +1,0 @@
-[console_scripts]
-retriva-eval = retriva_eval.cli:app
