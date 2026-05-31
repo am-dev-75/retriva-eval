@@ -20,7 +20,7 @@ class BaseRetrivaClient(ABC):
         pass
 
     @abstractmethod
-    def ingest_document(self, file_path: str, document_id: str, run_id: str) -> None:
+    def ingest_document(self, file_path: str, document_id: str, run_id: str, suite_name: str) -> None:
         pass
 
 class GatewayHttpClient(BaseRetrivaClient):
@@ -87,7 +87,7 @@ class GatewayHttpClient(BaseRetrivaClient):
             error=error_msg
         )
 
-    def ingest_document(self, file_path: str, document_id: str, run_id: str) -> None:
+    def ingest_document(self, file_path: str, document_id: str, run_id: str, suite_name: str) -> None:
         """Ingest a document via the Gateway batch-based ingestion workflow.
         
         Steps:
@@ -100,6 +100,7 @@ class GatewayHttpClient(BaseRetrivaClient):
         metadata = self.settings.parsed_eval_metadata.copy()
         metadata["run_id"] = run_id
         metadata["document_id"] = document_id
+        metadata["suite"] = suite_name
         
         try:
             with httpx.Client(timeout=self.settings.retriva_timeout_seconds) as client:
@@ -215,7 +216,7 @@ class CoreOpenAIClient(BaseRetrivaClient):
             error=error_msg
         )
 
-    def ingest_document(self, file_path: str, document_id: str, run_id: str) -> None:
+    def ingest_document(self, file_path: str, document_id: str, run_id: str, suite_name: str) -> None:
         """Ingest a document directly via Core v2 upload endpoint.
         
         POST /api/v2/documents/upload with multipart file, source_path, and user_metadata.
@@ -226,6 +227,7 @@ class CoreOpenAIClient(BaseRetrivaClient):
         metadata = self.settings.parsed_eval_metadata.copy()
         metadata["run_id"] = run_id
         metadata["document_id"] = document_id
+        metadata["suite"] = suite_name
         
         try:
             with httpx.Client(timeout=self.settings.retriva_timeout_seconds) as client:

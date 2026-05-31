@@ -1,0 +1,18 @@
+name: ragas_amnesty_qa
+version: 0.1.0
+
+dataset:
+  source: huggingface_dataset
+  repo: explodinggradients/amnesty_qa
+
+metrics:
+  - faithfulness
+  - answer_relevancy
+  - context_precision
+  - context_recall
+
+thresholds:
+  faithfulness: 0.75
+  answer_relevancy: 0.70
+  context_precision: 0.70
+  context_recall: 0.70

@@ -1,0 +1,6 @@
+name: "amnesty_qa_pipeline"
+description: "Pipeline for evaluating Retriva against the explodinggradients/amnesty_qa dataset"
+
+suites:
+  - name: "ragas_amnesty_qa"
+    enabled: true

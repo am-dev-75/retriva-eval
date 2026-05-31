@@ -25,5 +25,5 @@ def do_ingest(suite_name: str, settings: Settings, run_id: str, dry_run: bool) -
         for record in corpus:
             f.write(f"{record.text}\n\n")
             
-    client.ingest_document(dummy_md, document_id="dummy_doc_1", run_id=run_id)
+    client.ingest_document(dummy_md, document_id="dummy_doc_1", run_id=run_id, suite_name=suite_name)
 
