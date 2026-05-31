@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List
 import time
+import json
 import httpx
 import os
 
@@ -27,7 +28,8 @@ class GatewayHttpClient(BaseRetrivaClient):
         super().__init__(settings)
         self.base_url = self.settings.gateway_base_url
         self.chat_url = f"{self.base_url.rstrip('/')}{self.settings.gateway_chat_path}"
-        self.ingest_url = f"{self.base_url.rstrip('/')}{self.settings.gateway_ingestion_path}"
+        # Gateway ingestion uses a batch-based workflow under /gateway/ingestion/batches
+        self.ingestion_base = f"{self.base_url.rstrip('/')}{self.settings.gateway_ingestion_path}"
 
     def query(self, query_record: QueryRecord, run_id: str) -> PredictionRecord:
         start_time = time.time()
@@ -84,22 +86,41 @@ class GatewayHttpClient(BaseRetrivaClient):
         )
 
     def ingest_document(self, file_path: str, document_id: str, run_id: str) -> None:
+        """Ingest a document via the Gateway batch-based ingestion workflow.
+        
+        Steps:
+          1. POST /gateway/ingestion/batches  -> creates a batch, returns batch_id
+          2. POST /gateway/ingestion/batches/{batch_id}/files  -> uploads the file
+        """
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"File not found: {file_path}")
             
-        kb = self.settings.eval_knowledge_base
         metadata = self.settings.parsed_eval_metadata.copy()
         metadata["run_id"] = run_id
         metadata["document_id"] = document_id
         
         try:
             with httpx.Client(timeout=self.settings.retriva_timeout_seconds) as client:
+                # Step 1: Create a batch
+                batch_url = f"{self.ingestion_base}/batches"
+                batch_payload = {"metadata": metadata}
+                resp = client.post(batch_url, json=batch_payload)
+                resp.raise_for_status()
+                batch_id = resp.json()["batch_id"]
+                logger.debug(f"Created ingestion batch {batch_id}")
+                
+                # Step 2: Upload the file into the batch
+                upload_url = f"{self.ingestion_base}/batches/{batch_id}/files"
                 with open(file_path, "rb") as f:
                     files = {"file": (os.path.basename(file_path), f, "text/markdown")}
-                    data = {"knowledge_base": kb, "metadata": str(metadata)}
-                    response = client.post(self.ingest_url, files=files, data=data)
-                    response.raise_for_status()
-                    logger.info(f"Successfully ingested {file_path} via Gateway.")
+                    data = {
+                        "source_path": file_path,
+                        "user_metadata": json.dumps(metadata),
+                    }
+                    resp = client.post(upload_url, files=files, data=data)
+                    resp.raise_for_status()
+                    
+                logger.info(f"Successfully ingested {file_path} via Gateway (batch {batch_id}).")
         except Exception as e:
             logger.error(f"Gateway HTTP Error ingesting {file_path}: {e}")
             raise
@@ -170,10 +191,13 @@ class CoreOpenAIClient(BaseRetrivaClient):
         )
 
     def ingest_document(self, file_path: str, document_id: str, run_id: str) -> None:
+        """Ingest a document directly via Core v2 upload endpoint.
+        
+        POST /api/v2/documents/upload with multipart file, source_path, and user_metadata.
+        """
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"File not found: {file_path}")
             
-        kb = self.settings.eval_knowledge_base
         metadata = self.settings.parsed_eval_metadata.copy()
         metadata["run_id"] = run_id
         metadata["document_id"] = document_id
@@ -182,7 +206,10 @@ class CoreOpenAIClient(BaseRetrivaClient):
             with httpx.Client(timeout=self.settings.retriva_timeout_seconds) as client:
                 with open(file_path, "rb") as f:
                     files = {"file": (os.path.basename(file_path), f, "text/markdown")}
-                    data = {"knowledge_base": kb, "metadata": str(metadata)}
+                    data = {
+                        "source_path": file_path,
+                        "user_metadata": json.dumps(metadata),
+                    }
                     response = client.post(self.ingest_url, files=files, data=data)
                     response.raise_for_status()
                     logger.info(f"Successfully ingested {file_path} via Core.")
