@@ -1,10 +1,10 @@
 import pytest
 from retriva_eval.adapters.qdrant_store import QdrantAdapter
-from retriva_eval.core.config import QdrantConfig
+from retriva_eval.core.config import Settings
 
 def test_safe_delete_collection(caplog):
-    config = QdrantConfig()
-    adapter = QdrantAdapter(config)
+    settings = Settings()
+    adapter = QdrantAdapter(settings)
     adapter.safe_delete_collection()
     
     assert "Deletion of collection" in caplog.text

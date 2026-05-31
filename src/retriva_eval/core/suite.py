@@ -3,7 +3,7 @@ from typing import Dict, Any
 import os
 import yaml
 
-from retriva_eval.core.config import AppConfig
+from retriva_eval.core.config import Settings
 
 class BaseSuite(ABC):
     def __init__(self, name: str):
@@ -22,26 +22,26 @@ class BaseSuite(ABC):
         return self.config_cache
 
     @abstractmethod
-    def prepare(self, app_config: AppConfig, run_id: str, dry_run: bool) -> None:
+    def prepare(self, settings: Settings, run_id: str, dry_run: bool) -> None:
         """Download or materialize suite data."""
         pass
 
     @abstractmethod
-    def ingest(self, app_config: AppConfig, run_id: str, dry_run: bool) -> None:
+    def ingest(self, settings: Settings, run_id: str, dry_run: bool) -> None:
         """Index chunks into evaluation Qdrant collection."""
         pass
 
     @abstractmethod
-    def run(self, app_config: AppConfig, run_id: str, dry_run: bool) -> None:
+    def run(self, settings: Settings, run_id: str, dry_run: bool) -> None:
         """Execute queries against Retriva."""
         pass
 
     @abstractmethod
-    def evaluate(self, app_config: AppConfig, run_id: str, dry_run: bool) -> None:
+    def evaluate(self, settings: Settings, run_id: str, dry_run: bool) -> None:
         """Compute metrics using Ragas."""
         pass
 
     @abstractmethod
-    def report(self, app_config: AppConfig, run_id: str, dry_run: bool) -> None:
+    def report(self, settings: Settings, run_id: str, dry_run: bool) -> None:
         """Generate optional suite-specific reports before global aggregation."""
         pass

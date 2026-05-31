@@ -1,4 +1,4 @@
-from retriva_eval.core.config import AppConfig
+from retriva_eval.core.config import Settings
 from retriva_eval.core.runner import run_suite_lifecycle
 from retriva_eval.core.suite import BaseSuite
 
@@ -11,7 +11,7 @@ class DummySuite(BaseSuite):
 
 def test_runner_lifecycle():
     suite = DummySuite("dummy")
-    config = AppConfig()
+    settings = Settings()
     
     # Should not raise exception
-    run_suite_lifecycle(suite, config, "test_run_1", dry_run=True)
+    run_suite_lifecycle(suite, settings, "test_run_1", dry_run=True)

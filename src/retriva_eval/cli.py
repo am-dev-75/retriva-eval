@@ -1,7 +1,7 @@
 import typer
 from rich.console import Console
 
-from retriva_eval.core.config import load_config
+from retriva_eval.core.config import settings
 from retriva_eval.core.registry import get_all_suite_names, get_suite
 from retriva_eval.core.runner import run_suite_lifecycle, execute_pipeline
 from retriva_eval.utils.time import generate_run_id
@@ -22,24 +22,20 @@ def list_suites():
 @app.command()
 def run_suite(
     suite_name: str = typer.Argument(..., help="Name of the suite to run"),
-    config: str = typer.Option(None, "--config", "-c", help="Path to config YAML file"),
     dry_run: bool = typer.Option(False, "--dry-run", help="Run without live API calls"),
 ):
     """Runs one suite through the full lifecycle."""
-    app_config = load_config(config)
     suite = get_suite(suite_name)
     run_id = generate_run_id()
-    run_suite_lifecycle(suite, app_config, run_id, dry_run)
+    run_suite_lifecycle(suite, settings, run_id, dry_run)
 
 @app.command()
 def run_cycle(
     pipeline_path: str = typer.Argument(..., help="Path to pipeline YAML file"),
-    config: str = typer.Option(None, "--config", "-c", help="Path to config YAML file"),
     dry_run: bool = typer.Option(False, "--dry-run", help="Run without live API calls"),
 ):
     """Runs all enabled suites in a pipeline file."""
-    app_config = load_config(config)
-    execute_pipeline(pipeline_path, app_config, dry_run)
+    execute_pipeline(pipeline_path, settings, dry_run)
 
 if __name__ == "__main__":
     app()

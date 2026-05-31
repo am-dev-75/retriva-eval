@@ -2,7 +2,7 @@ import os
 import yaml
 from typing import Dict, Any, List
 
-from retriva_eval.core.config import AppConfig
+from retriva_eval.core.config import Settings
 from retriva_eval.core.suite import BaseSuite
 from retriva_eval.core.registry import get_suite
 from retriva_eval.core.schemas import MetricsRecord
@@ -14,27 +14,27 @@ from retriva_eval.reporting.markdown_report import generate_markdown_summary
 
 logger = get_logger("runner")
 
-def run_suite_lifecycle(suite: BaseSuite, app_config: AppConfig, run_id: str, dry_run: bool):
+def run_suite_lifecycle(suite: BaseSuite, settings: Settings, run_id: str, dry_run: bool):
     logger.info(f"Starting suite: {suite.name} (run_id: {run_id}, dry_run: {dry_run})")
     
     logger.info(f"[{suite.name}] Stage: prepare")
-    suite.prepare(app_config, run_id, dry_run)
+    suite.prepare(settings, run_id, dry_run)
     
     logger.info(f"[{suite.name}] Stage: ingest")
-    suite.ingest(app_config, run_id, dry_run)
+    suite.ingest(settings, run_id, dry_run)
     
     logger.info(f"[{suite.name}] Stage: run")
-    suite.run(app_config, run_id, dry_run)
+    suite.run(settings, run_id, dry_run)
     
     logger.info(f"[{suite.name}] Stage: evaluate")
-    suite.evaluate(app_config, run_id, dry_run)
+    suite.evaluate(settings, run_id, dry_run)
     
     logger.info(f"[{suite.name}] Stage: report")
-    suite.report(app_config, run_id, dry_run)
+    suite.report(settings, run_id, dry_run)
     
     logger.info(f"Finished suite: {suite.name}")
 
-def execute_pipeline(pipeline_path: str, app_config: AppConfig, dry_run: bool):
+def execute_pipeline(pipeline_path: str, settings: Settings, dry_run: bool):
     if not os.path.exists(pipeline_path):
         logger.error(f"Pipeline file not found: {pipeline_path}")
         raise FileNotFoundError(f"Pipeline file not found: {pipeline_path}")
@@ -53,11 +53,11 @@ def execute_pipeline(pipeline_path: str, app_config: AppConfig, dry_run: bool):
             continue
             
         suite = get_suite(name)
-        run_suite_lifecycle(suite, app_config, run_id, dry_run)
+        run_suite_lifecycle(suite, settings, run_id, dry_run)
         
     # Aggregate global report
     metrics = []
-    reports_dir = os.path.join(app_config.evaluation.reports_dir, run_id)
+    reports_dir = os.path.join(settings.eval_reports_dir, run_id)
     if os.path.exists(reports_dir):
         for suite_dir in os.listdir(reports_dir):
             metrics_path = os.path.join(reports_dir, suite_dir, "metrics.json")
@@ -67,6 +67,6 @@ def execute_pipeline(pipeline_path: str, app_config: AppConfig, dry_run: bool):
                     data = json.load(f)
                     metrics.append(MetricsRecord(**data))
                     
-    generate_json_summary(app_config.evaluation.reports_dir, run_id, metrics)
-    generate_markdown_summary(app_config.evaluation.reports_dir, run_id, metrics)
+    generate_json_summary(settings.eval_reports_dir, run_id, metrics)
+    generate_markdown_summary(settings.eval_reports_dir, run_id, metrics)
     logger.info(f"Pipeline execution complete. Run ID: {run_id}")

@@ -2,7 +2,7 @@ import os
 import importlib.util
 from typing import Dict, List, Type
 from retriva_eval.core.suite import BaseSuite
-from retriva_eval.core.config import AppConfig
+from retriva_eval.core.config import Settings
 
 _REGISTRY: Dict[str, Type[BaseSuite]] = {}
 
@@ -13,7 +13,7 @@ def register_suite(name: str):
     return decorator
 
 class DynamicSuite(BaseSuite):
-    def _call_stage(self, stage: str, app_config: AppConfig, run_id: str, dry_run: bool):
+    def _call_stage(self, stage: str, settings: Settings, run_id: str, dry_run: bool):
         path = os.path.join(self.get_suite_dir(), f"{stage}.py")
         if not os.path.exists(path):
             if stage == "report":
@@ -27,24 +27,24 @@ class DynamicSuite(BaseSuite):
         func_name = f"do_{stage}"
         if hasattr(module, func_name):
             func = getattr(module, func_name)
-            func(self.name, app_config, run_id, dry_run)
+            func(self.name, settings, run_id, dry_run)
         else:
             raise AttributeError(f"{path} must define '{func_name}'")
 
-    def prepare(self, app_config: AppConfig, run_id: str, dry_run: bool) -> None:
-        self._call_stage("prepare", app_config, run_id, dry_run)
+    def prepare(self, settings: Settings, run_id: str, dry_run: bool) -> None:
+        self._call_stage("prepare", settings, run_id, dry_run)
 
-    def ingest(self, app_config: AppConfig, run_id: str, dry_run: bool) -> None:
-        self._call_stage("ingest", app_config, run_id, dry_run)
+    def ingest(self, settings: Settings, run_id: str, dry_run: bool) -> None:
+        self._call_stage("ingest", settings, run_id, dry_run)
 
-    def run(self, app_config: AppConfig, run_id: str, dry_run: bool) -> None:
-        self._call_stage("run", app_config, run_id, dry_run)
+    def run(self, settings: Settings, run_id: str, dry_run: bool) -> None:
+        self._call_stage("run", settings, run_id, dry_run)
 
-    def evaluate(self, app_config: AppConfig, run_id: str, dry_run: bool) -> None:
-        self._call_stage("evaluate", app_config, run_id, dry_run)
+    def evaluate(self, settings: Settings, run_id: str, dry_run: bool) -> None:
+        self._call_stage("evaluate", settings, run_id, dry_run)
 
-    def report(self, app_config: AppConfig, run_id: str, dry_run: bool) -> None:
-        self._call_stage("report", app_config, run_id, dry_run)
+    def report(self, settings: Settings, run_id: str, dry_run: bool) -> None:
+        self._call_stage("report", settings, run_id, dry_run)
 
 def get_suite(name: str) -> BaseSuite:
     if name in _REGISTRY:

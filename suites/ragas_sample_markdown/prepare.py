@@ -1,13 +1,13 @@
 import os
-from retriva_eval.core.config import AppConfig
+from retriva_eval.core.config import Settings
 from retriva_eval.core.schemas import CorpusRecord, QueryRecord
 from retriva_eval.utils.io import write_jsonl
 from retriva_eval.utils.logging import get_logger
 
 logger = get_logger("ragas_suite_prepare")
 
-def do_prepare(suite_name: str, app_config: AppConfig, run_id: str, dry_run: bool) -> None:
-    reports_dir = os.path.join(app_config.evaluation.reports_dir, run_id, suite_name)
+def do_prepare(suite_name: str, settings: Settings, run_id: str, dry_run: bool) -> None:
+    reports_dir = os.path.join(settings.eval_reports_dir, run_id, suite_name)
     os.makedirs(reports_dir, exist_ok=True)
     
     corpus_path = os.path.join(reports_dir, "corpus.jsonl")

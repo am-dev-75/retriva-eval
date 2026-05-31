@@ -1,3 +1,0 @@
-# Local configuration overrides
-retriva:
-  endpoint_env: RETRIVA_ENDPOINT

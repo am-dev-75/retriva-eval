@@ -1,6 +1,6 @@
 import os
 from typing import Dict
-from retriva_eval.core.config import AppConfig
+from retriva_eval.core.config import Settings
 from retriva_eval.core.schemas import QueryRecord, PredictionRecord, MetricsRecord
 from retriva_eval.adapters.ragas_eval import RagasAdapter
 from retriva_eval.utils.io import read_jsonl, write_json
@@ -8,8 +8,8 @@ from retriva_eval.utils.logging import get_logger
 
 logger = get_logger("ragas_suite_evaluate")
 
-def do_evaluate(suite_name: str, app_config: AppConfig, run_id: str, dry_run: bool) -> MetricsRecord:
-    reports_dir = os.path.join(app_config.evaluation.reports_dir, run_id, suite_name)
+def do_evaluate(suite_name: str, settings: Settings, run_id: str, dry_run: bool) -> MetricsRecord:
+    reports_dir = os.path.join(settings.eval_reports_dir, run_id, suite_name)
     queries = read_jsonl(os.path.join(reports_dir, "queries.jsonl"), QueryRecord)
     predictions = read_jsonl(os.path.join(reports_dir, "predictions.jsonl"), PredictionRecord)
     
