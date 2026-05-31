@@ -3,7 +3,7 @@ from qdrant_client import QdrantClient
 from qdrant_client.http import models as rest
 from retriva_eval.core.config import Settings
 from retriva_eval.core.schemas import CorpusRecord
-from retriva_eval.utils.logging import get_logger
+from retriva_eval.logger import get_logger
 
 logger = get_logger("qdrant_adapter")
 

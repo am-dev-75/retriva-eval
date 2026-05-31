@@ -2,7 +2,7 @@ import os
 from retriva_eval.core.config import Settings
 from retriva_eval.core.schemas import CorpusRecord, QueryRecord
 from retriva_eval.utils.io import write_jsonl
-from retriva_eval.utils.logging import get_logger
+from retriva_eval.logger import get_logger
 
 logger = get_logger("ragas_suite_prepare")
 

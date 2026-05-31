@@ -6,7 +6,7 @@ from retriva_eval.core.config import Settings
 from retriva_eval.core.suite import BaseSuite
 from retriva_eval.core.registry import get_suite
 from retriva_eval.core.schemas import MetricsRecord
-from retriva_eval.utils.logging import get_logger
+from retriva_eval.logger import get_logger
 from retriva_eval.utils.time import generate_run_id
 from retriva_eval.utils.io import read_jsonl, read_json
 from retriva_eval.reporting.json_report import generate_json_summary

@@ -9,7 +9,7 @@ except ImportError:
     RAGAS_AVAILABLE = False
 
 from retriva_eval.core.schemas import PredictionRecord, QueryRecord
-from retriva_eval.utils.logging import get_logger
+from retriva_eval.logger import get_logger
 
 logger = get_logger("ragas_adapter")
 

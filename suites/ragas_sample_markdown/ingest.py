@@ -3,7 +3,7 @@ from retriva_eval.core.config import Settings
 from retriva_eval.core.schemas import CorpusRecord
 from retriva_eval.adapters.retriva_client import get_retriva_client
 from retriva_eval.utils.io import read_jsonl
-from retriva_eval.utils.logging import get_logger
+from retriva_eval.logger import get_logger
 
 logger = get_logger("ragas_suite_ingest")
 
