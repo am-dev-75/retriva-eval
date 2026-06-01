@@ -1,3 +1,17 @@
+# Copyright (C) 2026 Andrea Marson (am.dev.75@gmail.com)
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#         http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import sys
 from types import ModuleType
 
@@ -59,7 +73,30 @@ class RagasAdapter:
             
             client = OpenAI(**client_kwargs)
             self.evaluator_llm = llm_factory(model=self.settings.llm_model, provider=self.settings.llm_provider, client=client)
-            self.evaluator_embeddings = embedding_factory(provider="openai", model="text-embedding-3-small", client=client)
+            
+            embed_api_key = self.settings.embedding_api_key or self.settings.openai_api_key
+            embed_kwargs = {"api_key": embed_api_key}
+            if self.settings.embedding_base_url:
+                embed_kwargs["base_url"] = self.settings.embedding_base_url
+            
+            embed_client = OpenAI(**embed_kwargs)
+            self.evaluator_embeddings = embedding_factory(
+                provider=self.settings.embedding_provider, 
+                model=self.settings.embedding_model, 
+                client=embed_client
+            )
+            
+            # --- MONKEY PATCH FOR RAGAS 0.4.x EMBEDDINGS BUG ---
+            # Ragas 0.4.x OpenAIEmbeddings uses 'embed_text' but AnswerRelevancy calls 'embed_query'
+            if not hasattr(self.evaluator_embeddings, "embed_query") and hasattr(self.evaluator_embeddings, "embed_text"):
+                self.evaluator_embeddings.embed_query = self.evaluator_embeddings.embed_text
+            if not hasattr(self.evaluator_embeddings, "embed_documents") and hasattr(self.evaluator_embeddings, "embed_texts"):
+                self.evaluator_embeddings.embed_documents = self.evaluator_embeddings.embed_texts
+            if not hasattr(self.evaluator_embeddings, "aembed_query") and hasattr(self.evaluator_embeddings, "aembed_text"):
+                self.evaluator_embeddings.aembed_query = self.evaluator_embeddings.aembed_text
+            if not hasattr(self.evaluator_embeddings, "aembed_documents") and hasattr(self.evaluator_embeddings, "aembed_texts"):
+                self.evaluator_embeddings.aembed_documents = self.evaluator_embeddings.aembed_texts
+            # ---------------------------------------------------
             
         metric_map = {
             "faithfulness": Faithfulness(llm=self.evaluator_llm),

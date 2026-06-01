@@ -1,3 +1,17 @@
+# Copyright (C) 2026 Andrea Marson (am.dev.75@gmail.com)
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#         http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import os
 import yaml
 from typing import Dict, Any, List
@@ -35,6 +49,12 @@ def run_suite_lifecycle(suite: BaseSuite, settings: Settings, run_id: str, dry_r
     logger.info(f"Finished suite: {suite.name}")
 
 def execute_pipeline(pipeline_path: str, settings: Settings, dry_run: bool):
+    import time
+    from retriva_eval.core.profiler import APIProfiler
+    from retriva_eval.core.schemas import APIEndpointStats
+    
+    start_time = time.time()
+    
     if not os.path.exists(pipeline_path):
         logger.error(f"Pipeline file not found: {pipeline_path}")
         raise FileNotFoundError(f"Pipeline file not found: {pipeline_path}")
@@ -67,6 +87,12 @@ def execute_pipeline(pipeline_path: str, settings: Settings, dry_run: bool):
                     data = json.load(f)
                     metrics.append(MetricsRecord(**data))
                     
-    generate_json_summary(settings.eval_reports_dir, run_id, metrics)
-    generate_markdown_summary(settings.eval_reports_dir, run_id, metrics)
+    total_time_ms = int((time.time() - start_time) * 1000)
+    
+    api_stats_raw = APIProfiler.get_instance().get_statistics()
+    api_stats = [APIEndpointStats(**stat) for stat in api_stats_raw]
+    
+    generate_json_summary(settings.eval_reports_dir, run_id, metrics, total_time_ms, api_stats)
+    generate_markdown_summary(settings.eval_reports_dir, run_id, metrics, total_time_ms, api_stats)
     logger.info(f"Pipeline execution complete. Run ID: {run_id}")
+    return run_id

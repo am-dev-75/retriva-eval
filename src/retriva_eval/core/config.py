@@ -1,6 +1,22 @@
+# Copyright (C) 2026 Andrea Marson (am.dev.75@gmail.com)
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#         http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from typing import Optional, Dict
 from pydantic_settings import BaseSettings, SettingsConfigDict
 import json
+
+VERSION = "0.1.0"
 
 class Settings(BaseSettings):
     # Retriva Client
@@ -41,6 +57,12 @@ class Settings(BaseSettings):
     openai_base_url: Optional[str] = None
     llm_provider: str = "openai"
     llm_model: str = "gpt-4o-mini"
+    
+    # Embeddings
+    embedding_api_key: Optional[str] = None
+    embedding_base_url: Optional[str] = None
+    embedding_provider: str = "openai"
+    embedding_model: str = "text-embedding-3-small"
     
     model_config = SettingsConfigDict(
         env_file=".env",

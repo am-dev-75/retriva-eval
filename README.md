@@ -1,6 +1,6 @@
 # retriva-eval
 
-`retriva-eval` is the continuous evaluation and regression-testing framework for Retriva.
+`retriva-eval` is the continuous evaluation and regression-testing framework for [Retriva](https://github.com/am-dev-75/retriva-eval).
 
 ## Features
 
@@ -28,7 +28,7 @@ Copy the example environment file and configure your credentials:
 cp .env.example .env
 ```
 
-Ensure `RETRIVA_ENDPOINT` and `QDRANT_API_KEY` are correctly set.
+Ensure `RETRIVA_ENDPOINT` and `QDRANT_API_KEY` are correctly set. See [.env.example](.env.example) for more information.
 
 ### Running Evaluations
 

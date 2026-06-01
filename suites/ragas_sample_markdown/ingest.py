@@ -1,3 +1,17 @@
+# Copyright (C) 2026 Andrea Marson (am.dev.75@gmail.com)
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#         http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import os
 from retriva_eval.core.config import Settings
 from retriva_eval.core.schemas import CorpusRecord
@@ -18,12 +32,29 @@ def do_ingest(suite_name: str, settings: Settings, run_id: str, dry_run: bool) -
     client = get_retriva_client(settings)
     logger.info(f"Ingesting documents via {settings.retriva_adapter} into KB '{settings.eval_knowledge_base}'")
     
-    # For MVP stub, we'll write a dummy markdown file and ingest it
-    dummy_md = os.path.join(settings.eval_reports_dir, run_id, suite_name, "dummy.md")
-    with open(dummy_md, "w", encoding="utf-8") as f:
-        f.write("# Dummy Document\n\n")
-        for record in corpus:
-            f.write(f"{record.text}\n\n")
+    import httpx
+    # Auto-create the knowledge base if it doesn't exist
+    kb_id = settings.eval_knowledge_base
+    core_url = settings.core_ingestion_base_url.rstrip("/")
+    try:
+        with httpx.Client(timeout=10.0) as http:
+            # Create the KB (ignores 409 if it already exists)
+            resp = http.post(
+                f"{core_url}/api/v2/kbs",
+                json={"kb_id": kb_id, "name": kb_id, "description": "Auto-created for eval"}
+            )
+            if resp.status_code not in (201, 409):
+                logger.warning(f"Failed to auto-create KB {kb_id}: {resp.status_code} {resp.text}")
+    except Exception as e:
+        logger.warning(f"Could not reach Core API to auto-create KB: {e}")
+
+    data_dir = os.path.join(settings.eval_reports_dir, run_id, suite_name, "data")
+    os.makedirs(data_dir, exist_ok=True)
+    
+    for record in corpus:
+        file_path = os.path.join(data_dir, f"{record.document_id}.md")
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write(record.text)
             
-    client.ingest_document(dummy_md, document_id="dummy_doc_1", run_id=run_id, suite_name=suite_name)
+        client.ingest_document(file_path, document_id=record.document_id, run_id=run_id, suite_name=suite_name)
 
