@@ -57,3 +57,6 @@ To run the unit and integration test suite:
 ```bash
 pytest
 ```
+## Licensing
+
+This project, including all source code, agentic specifications, and documentation, is licensed under the Apache License 2.0. See the LICENSE file for details.
