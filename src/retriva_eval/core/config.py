@@ -16,7 +16,7 @@ from typing import Optional, Dict
 from pydantic_settings import BaseSettings, SettingsConfigDict
 import json
 
-VERSION = "0.1.0"
+VERSION = "1.0.0-rc0"
 
 class Settings(BaseSettings):
     # Retriva Client
