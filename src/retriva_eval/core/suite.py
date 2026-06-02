@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from abc import ABC, abstractmethod
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import os
 import yaml
 
@@ -36,26 +36,33 @@ class BaseSuite(ABC):
         return self.config_cache
 
     @abstractmethod
-    def prepare(self, settings: Settings, run_id: str, dry_run: bool) -> None:
-        """Download or materialize suite data."""
+    def prepare(self, settings: Settings, run_id: str, dry_run: bool, portion: float = 1.0, seed: Optional[int] = None) -> None:
+        """Download or materialize suite data.
+
+        Args:
+            portion: Fraction (0 < portion <= 1) of the dataset to use. Suites that
+                do not support sub-sampling may ignore this argument.
+            seed: Optional random seed override. When ``None`` the suite should
+                fall back to its own default (typically from ``suite.yaml``).
+        """
         pass
 
     @abstractmethod
-    def ingest(self, settings: Settings, run_id: str, dry_run: bool) -> None:
+    def ingest(self, settings: Settings, run_id: str, dry_run: bool, portion: float = 1.0, seed: Optional[int] = None) -> None:
         """Index chunks into evaluation Qdrant collection."""
         pass
 
     @abstractmethod
-    def run(self, settings: Settings, run_id: str, dry_run: bool) -> None:
+    def run(self, settings: Settings, run_id: str, dry_run: bool, portion: float = 1.0, seed: Optional[int] = None) -> None:
         """Execute queries against Retriva."""
         pass
 
     @abstractmethod
-    def evaluate(self, settings: Settings, run_id: str, dry_run: bool) -> None:
+    def evaluate(self, settings: Settings, run_id: str, dry_run: bool, portion: float = 1.0, seed: Optional[int] = None) -> None:
         """Compute metrics using Ragas."""
         pass
 
     @abstractmethod
-    def report(self, settings: Settings, run_id: str, dry_run: bool) -> None:
+    def report(self, settings: Settings, run_id: str, dry_run: bool, portion: float = 1.0, seed: Optional[int] = None) -> None:
         """Generate optional suite-specific reports before global aggregation."""
         pass

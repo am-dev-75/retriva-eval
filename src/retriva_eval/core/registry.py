@@ -13,8 +13,9 @@
 # limitations under the License.
 
 import os
+import inspect
 import importlib.util
-from typing import Dict, List, Type
+from typing import Dict, List, Optional, Type
 from retriva_eval.core.suite import BaseSuite
 from retriva_eval.core.config import Settings
 
@@ -27,7 +28,7 @@ def register_suite(name: str):
     return decorator
 
 class DynamicSuite(BaseSuite):
-    def _call_stage(self, stage: str, settings: Settings, run_id: str, dry_run: bool):
+    def _call_stage(self, stage: str, settings: Settings, run_id: str, dry_run: bool, portion: float = 1.0, seed: Optional[int] = None):
         path = os.path.join(self.get_suite_dir(), f"{stage}.py")
         if not os.path.exists(path):
             if stage == "report":
@@ -41,24 +42,33 @@ class DynamicSuite(BaseSuite):
         func_name = f"do_{stage}"
         if hasattr(module, func_name):
             func = getattr(module, func_name)
-            func(self.name, settings, run_id, dry_run)
+            # Support both legacy (suite_name, settings, run_id, dry_run) and
+            # extended (suite_name, settings, run_id, dry_run, portion, seed)
+            # signatures so older suites keep working without modification.
+            sig = inspect.signature(func)
+            kwargs = {}
+            if "portion" in sig.parameters:
+                kwargs["portion"] = portion
+            if "seed" in sig.parameters:
+                kwargs["seed"] = seed
+            func(self.name, settings, run_id, dry_run, **kwargs)
         else:
             raise AttributeError(f"{path} must define '{func_name}'")
 
-    def prepare(self, settings: Settings, run_id: str, dry_run: bool) -> None:
-        self._call_stage("prepare", settings, run_id, dry_run)
+    def prepare(self, settings: Settings, run_id: str, dry_run: bool, portion: float = 1.0, seed: Optional[int] = None) -> None:
+        self._call_stage("prepare", settings, run_id, dry_run, portion, seed)
 
-    def ingest(self, settings: Settings, run_id: str, dry_run: bool) -> None:
-        self._call_stage("ingest", settings, run_id, dry_run)
+    def ingest(self, settings: Settings, run_id: str, dry_run: bool, portion: float = 1.0, seed: Optional[int] = None) -> None:
+        self._call_stage("ingest", settings, run_id, dry_run, portion, seed)
 
-    def run(self, settings: Settings, run_id: str, dry_run: bool) -> None:
-        self._call_stage("run", settings, run_id, dry_run)
+    def run(self, settings: Settings, run_id: str, dry_run: bool, portion: float = 1.0, seed: Optional[int] = None) -> None:
+        self._call_stage("run", settings, run_id, dry_run, portion, seed)
 
-    def evaluate(self, settings: Settings, run_id: str, dry_run: bool) -> None:
-        self._call_stage("evaluate", settings, run_id, dry_run)
+    def evaluate(self, settings: Settings, run_id: str, dry_run: bool, portion: float = 1.0, seed: Optional[int] = None) -> None:
+        self._call_stage("evaluate", settings, run_id, dry_run, portion, seed)
 
-    def report(self, settings: Settings, run_id: str, dry_run: bool) -> None:
-        self._call_stage("report", settings, run_id, dry_run)
+    def report(self, settings: Settings, run_id: str, dry_run: bool, portion: float = 1.0, seed: Optional[int] = None) -> None:
+        self._call_stage("report", settings, run_id, dry_run, portion, seed)
 
 def get_suite(name: str) -> BaseSuite:
     if name in _REGISTRY:

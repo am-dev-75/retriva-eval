@@ -14,6 +14,9 @@
 
 import os
 import hashlib
+import random
+from typing import Optional
+
 from datasets import load_dataset
 from retriva_eval.core.config import Settings
 from retriva_eval.core.schemas import CorpusRecord, QueryRecord
@@ -22,7 +25,9 @@ from retriva_eval.logger import get_logger
 
 logger = get_logger("ragas_amnesty_qa_prepare")
 
-def do_prepare(suite_name: str, settings: Settings, run_id: str, dry_run: bool) -> None:
+_DEFAULT_SEED = 42
+
+def do_prepare(suite_name: str, settings: Settings, run_id: str, dry_run: bool, portion: float = 1.0, seed: Optional[int] = None) -> None:
     reports_dir = os.path.join(settings.eval_reports_dir, run_id, suite_name)
     os.makedirs(reports_dir, exist_ok=True)
     
@@ -44,6 +49,18 @@ def do_prepare(suite_name: str, settings: Settings, run_id: str, dry_run: bool) 
     except Exception as e:
         logger.error(f"Failed to load dataset: {e}")
         raise
+
+    # Apply random sub-sampling if portion < 1.0.
+    effective_seed = seed if seed is not None else _DEFAULT_SEED
+    total = len(eval_ds)
+    if portion < 1.0:
+        n = max(1, int(round(total * portion)))
+        rng = random.Random(effective_seed)
+        indices = sorted(rng.sample(range(total), n))
+        eval_ds = eval_ds.select(indices)
+        logger.info(f"Sampled {n}/{total} rows (portion={portion}, seed={effective_seed}).")
+    else:
+        logger.info(f"Using full dataset ({total} rows).")
 
     corpus_records = []
     query_records = []

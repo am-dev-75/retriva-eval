@@ -1,0 +1,6 @@
+name: "ragbench_pipeline"
+description: "Pipeline for evaluating Retriva against the rungalileo/ragbench dataset (12 subsets)."
+
+suites:
+  - name: "ragbench"
+    enabled: true

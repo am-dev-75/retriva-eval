@@ -1,0 +1,38 @@
+nameo: ragbench
+version: 0.1.0
+
+dataset:
+  source: huggingface_dataset
+  repo: rungalileo/ragbench
+  # The 12 RAGBench subsets. Each is a separate HuggingFace dataset config.
+  subsets:
+    - covidqa
+    - cuad
+    - delucionqa
+    - emanual
+    - expertqa
+    - finqa
+    - hagrid
+    - hotpotqa
+    - msmarco
+    - pubmedqa
+    - tatqa
+    - techqa
+  split: test
+
+sampling:
+  # Default RNG seed used when sub-sampling (`--portion < 1.0`).
+  # Override at runtime with the `--seed` CLI option.
+  seed: 42
+
+metrics:
+  - context_relevance
+  - context_utilization
+  - completeness
+  - adherence
+
+thresholds:
+  context_relevance: 0.70
+  context_utilization: 0.70
+  completeness: 0.70
+  adherence: 0.80

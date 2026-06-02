@@ -42,6 +42,20 @@ class Settings(BaseSettings):
     eval_metadata_filtering_mode: str = "hard"
     eval_reports_dir: str = "reports"
     eval_fail_on_threshold_breach: bool = True
+    # Bounded concurrency for I/O-bound stages. Set to 1 to force fully
+    # sequential behaviour. These cap the number of in-flight network calls
+    # against Retriva (ingestion), the chat/query endpoint, and the
+    # LLM-as-judge endpoint respectively.
+    eval_ingest_concurrency: int = 8
+    eval_judge_concurrency: int = 8
+    # The `run` stage hits the full Retriva retrieval+generation pipeline
+    # (vector search -> rerank -> LLM), which is heavier and more likely to
+    # stress the backend, so its default concurrency is intentionally lower.
+    eval_run_concurrency: int = 4
+    # Number of documents uploaded into a single Gateway ingestion batch.
+    # Larger batches collapse the per-document status-poll loops into one poll
+    # per batch, dramatically reducing ingestion wall-clock time.
+    eval_ingest_batch_size: int = 50
     
     # Qdrant
     qdrant_url: str = "http://localhost:6333"

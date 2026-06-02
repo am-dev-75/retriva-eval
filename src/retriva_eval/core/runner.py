@@ -13,13 +13,16 @@
 # limitations under the License.
 
 import os
+import json
+import time
 import yaml
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional, Tuple
 
 from retriva_eval.core.config import Settings
 from retriva_eval.core.suite import BaseSuite
 from retriva_eval.core.registry import get_suite
-from retriva_eval.core.schemas import MetricsRecord
+from retriva_eval.core.schemas import MetricsRecord, APIEndpointStats
+from retriva_eval.core.profiler import APIProfiler
 from retriva_eval.logger import get_logger
 from retriva_eval.utils.time import generate_run_id
 from retriva_eval.utils.io import read_jsonl, read_json
@@ -28,31 +31,88 @@ from retriva_eval.reporting.markdown_report import generate_markdown_summary
 
 logger = get_logger("runner")
 
-def run_suite_lifecycle(suite: BaseSuite, settings: Settings, run_id: str, dry_run: bool):
-    logger.info(f"Starting suite: {suite.name} (run_id: {run_id}, dry_run: {dry_run})")
+
+def _aggregate_and_report(
+    settings: Settings, run_id: str, total_time_ms: int
+) -> Tuple[List[MetricsRecord], str]:
+    """Collect per-suite metrics.json files for a run, then write the global
+    JSON and Markdown summaries.
+
+    Returns the list of :class:`MetricsRecord` and the path to ``summary.md``.
+    Shared by both the single-suite (`run-suite`) and pipeline (`run-cycle`)
+    entry points so that both always produce a summary.
+    """
+    metrics: List[MetricsRecord] = []
+    reports_dir = os.path.join(settings.eval_reports_dir, run_id)
+    if os.path.exists(reports_dir):
+        for suite_dir in sorted(os.listdir(reports_dir)):
+            metrics_path = os.path.join(reports_dir, suite_dir, "metrics.json")
+            if os.path.exists(metrics_path):
+                with open(metrics_path, "r", encoding="utf-8") as f:
+                    metrics.append(MetricsRecord(**json.load(f)))
+
+    api_stats_raw = APIProfiler.get_instance().get_statistics()
+    api_stats = [APIEndpointStats(**stat) for stat in api_stats_raw]
+
+    generate_json_summary(settings.eval_reports_dir, run_id, metrics, total_time_ms, api_stats)
+    summary_path = generate_markdown_summary(
+        settings.eval_reports_dir, run_id, metrics, total_time_ms, api_stats
+    )
+    return metrics, summary_path
+
+def run_suite_lifecycle(
+    suite: BaseSuite,
+    settings: Settings,
+    run_id: str,
+    dry_run: bool,
+    portion: float = 1.0,
+    seed: Optional[int] = None,
+    generate_summary: bool = True,
+) -> Optional[str]:
+    """Run a single suite through its full lifecycle.
+
+    When ``generate_summary`` is True (the default, used by the ``run-suite``
+    command), the global JSON/Markdown summaries are produced at the end and
+    the path to ``summary.md`` is returned. The pipeline runner passes
+    ``generate_summary=False`` because it aggregates across all suites itself.
+    """
+    start_time = time.time()
+    logger.info(
+        f"Starting suite: {suite.name} (run_id: {run_id}, dry_run: {dry_run}, "
+        f"portion: {portion}, seed: {seed if seed is not None else 'suite-default'})"
+    )
     
     logger.info(f"[{suite.name}] Stage: prepare")
-    suite.prepare(settings, run_id, dry_run)
+    suite.prepare(settings, run_id, dry_run, portion=portion, seed=seed)
     
     logger.info(f"[{suite.name}] Stage: ingest")
-    suite.ingest(settings, run_id, dry_run)
+    suite.ingest(settings, run_id, dry_run, portion=portion, seed=seed)
     
     logger.info(f"[{suite.name}] Stage: run")
-    suite.run(settings, run_id, dry_run)
+    suite.run(settings, run_id, dry_run, portion=portion, seed=seed)
     
     logger.info(f"[{suite.name}] Stage: evaluate")
-    suite.evaluate(settings, run_id, dry_run)
+    suite.evaluate(settings, run_id, dry_run, portion=portion, seed=seed)
     
     logger.info(f"[{suite.name}] Stage: report")
-    suite.report(settings, run_id, dry_run)
+    suite.report(settings, run_id, dry_run, portion=portion, seed=seed)
     
     logger.info(f"Finished suite: {suite.name}")
 
-def execute_pipeline(pipeline_path: str, settings: Settings, dry_run: bool):
-    import time
-    from retriva_eval.core.profiler import APIProfiler
-    from retriva_eval.core.schemas import APIEndpointStats
-    
+    summary_path = None
+    if generate_summary:
+        total_time_ms = int((time.time() - start_time) * 1000)
+        _, summary_path = _aggregate_and_report(settings, run_id, total_time_ms)
+        logger.info(f"Wrote run summary to {summary_path}")
+    return summary_path
+
+def execute_pipeline(
+    pipeline_path: str,
+    settings: Settings,
+    dry_run: bool,
+    portion: float = 1.0,
+    seed: Optional[int] = None,
+):
     start_time = time.time()
     
     if not os.path.exists(pipeline_path):
@@ -73,26 +133,14 @@ def execute_pipeline(pipeline_path: str, settings: Settings, dry_run: bool):
             continue
             
         suite = get_suite(name)
-        run_suite_lifecycle(suite, settings, run_id, dry_run)
+        # The pipeline aggregates across all suites itself, so suppress the
+        # per-suite summary generation inside the lifecycle.
+        run_suite_lifecycle(
+            suite, settings, run_id, dry_run, portion=portion, seed=seed,
+            generate_summary=False,
+        )
         
-    # Aggregate global report
-    metrics = []
-    reports_dir = os.path.join(settings.eval_reports_dir, run_id)
-    if os.path.exists(reports_dir):
-        for suite_dir in os.listdir(reports_dir):
-            metrics_path = os.path.join(reports_dir, suite_dir, "metrics.json")
-            if os.path.exists(metrics_path):
-                import json
-                with open(metrics_path, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                    metrics.append(MetricsRecord(**data))
-                    
     total_time_ms = int((time.time() - start_time) * 1000)
-    
-    api_stats_raw = APIProfiler.get_instance().get_statistics()
-    api_stats = [APIEndpointStats(**stat) for stat in api_stats_raw]
-    
-    generate_json_summary(settings.eval_reports_dir, run_id, metrics, total_time_ms, api_stats)
-    generate_markdown_summary(settings.eval_reports_dir, run_id, metrics, total_time_ms, api_stats)
+    _aggregate_and_report(settings, run_id, total_time_ms)
     logger.info(f"Pipeline execution complete. Run ID: {run_id}")
     return run_id

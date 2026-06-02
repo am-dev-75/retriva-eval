@@ -12,10 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import os
-from typing import List
+from typing import List, Optional
 
 from retriva_eval.core.schemas import MetricsRecord, APIEndpointStats
+
+
+def _load_per_subset(reports_dir: str, run_id: str, suite: str) -> Optional[dict]:
+    """Load a suite's optional per-subset breakdown if it wrote one.
+
+    Returns the ``per_subset`` mapping (subset -> metric scores) or ``None``
+    when the suite did not produce a ``metrics_by_subset.json`` artifact.
+    """
+    path = os.path.join(reports_dir, run_id, suite, "metrics_by_subset.json")
+    if not os.path.exists(path):
+        return None
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data.get("per_subset") or None
+    except (json.JSONDecodeError, OSError):
+        return None
+
 
 def generate_markdown_summary(reports_dir: str, run_id: str, metrics: List[MetricsRecord], total_time_ms: int, api_stats: List[APIEndpointStats]) -> str:
     summary_path = os.path.join(reports_dir, run_id, "summary.md")
@@ -56,6 +75,25 @@ def generate_markdown_summary(reports_dir: str, run_id: str, metrics: List[Metri
             else:
                 lines.append(f"| {k} | {v:.4f} | N/A | ℹ️ |")
         lines.append("")
+
+        # Optional per-subset breakdown (e.g. RAGBench's 12 domains).
+        per_subset = _load_per_subset(reports_dir, run_id, m.suite)
+        if per_subset:
+            metric_keys = list(m.metrics.keys())
+            header = "| Subset | Samples | " + " | ".join(metric_keys) + " |"
+            divider = "|---|---|" + "|".join(["---"] * len(metric_keys)) + "|"
+            lines.append("### Per-Subset Breakdown")
+            lines.append(header)
+            lines.append(divider)
+            for subset in sorted(per_subset.keys()):
+                scores = per_subset[subset]
+                sample_count = int(scores.get("sample_count", 0))
+                cells = []
+                for k in metric_keys:
+                    val = scores.get(k)
+                    cells.append(f"{val:.4f}" if isinstance(val, (int, float)) else "N/A")
+                lines.append(f"| {subset} | {sample_count} | " + " | ".join(cells) + " |")
+            lines.append("")
         
     os.makedirs(os.path.dirname(summary_path), exist_ok=True)
     with open(summary_path, "w", encoding="utf-8") as f:

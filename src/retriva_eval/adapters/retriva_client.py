@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, Tuple
 import time
 import json
 import httpx
@@ -37,6 +37,23 @@ class BaseRetrivaClient(ABC):
     @abstractmethod
     def ingest_document(self, file_path: str, document_id: str, run_id: str, suite_name: str) -> None:
         pass
+
+    def ingest_documents(
+        self,
+        documents: List[Tuple[str, str]],
+        run_id: str,
+        suite_name: str,
+    ) -> None:
+        """Ingest many documents.
+
+        ``documents`` is a list of ``(file_path, document_id)`` tuples.
+
+        The default implementation simply loops over :meth:`ingest_document`.
+        Adapters whose backend supports multi-file batches (e.g. the Gateway)
+        should override this with a more efficient batched implementation.
+        """
+        for file_path, document_id in documents:
+            self.ingest_document(file_path, document_id, run_id, suite_name)
 
 class GatewayHttpClient(BaseRetrivaClient):
     def __init__(self, settings: Settings):
@@ -183,6 +200,103 @@ class GatewayHttpClient(BaseRetrivaClient):
                 logger.info(f"Successfully ingested {file_path} via Gateway (batch {batch_id}).")
         except Exception as e:
             logger.error(f"Gateway HTTP Error ingesting {file_path}: {e}")
+            raise
+
+    def ingest_documents(
+        self,
+        documents: List[Tuple[str, str]],
+        run_id: str,
+        suite_name: str,
+    ) -> None:
+        """Ingest many documents using as few Gateway batches as possible.
+
+        Files are grouped into batches of ``eval_ingest_batch_size``. For each
+        group we create a single batch, upload every file into it, then poll
+        the batch status once until all files in the group reach a terminal
+        state. This collapses the previous N per-document poll loops into one
+        poll loop per batch, which is the dominant ingestion cost.
+        """
+        batch_size = max(1, self.settings.eval_ingest_batch_size)
+        groups = [
+            documents[i : i + batch_size]
+            for i in range(0, len(documents), batch_size)
+        ]
+        for group in groups:
+            self._ingest_one_batch(group, run_id, suite_name)
+
+    def _ingest_one_batch(
+        self,
+        group: List[Tuple[str, str]],
+        run_id: str,
+        suite_name: str,
+    ) -> None:
+        # Validate files up front.
+        for file_path, _ in group:
+            if not os.path.exists(file_path):
+                raise FileNotFoundError(f"File not found: {file_path}")
+
+        base_metadata = self.settings.parsed_eval_metadata.copy()
+        base_metadata["run_id"] = run_id
+        base_metadata["suite"] = suite_name
+
+        try:
+            with httpx.Client(timeout=self.settings.retriva_timeout_seconds) as client:
+                # Step 1: Create a single batch for the whole group.
+                batch_url = f"{self.ingestion_base}/batches"
+                t_start = time.time()
+                resp = client.post(batch_url, json={"metadata": base_metadata})
+                APIProfiler.get_instance().record_call(
+                    f"{self.settings.gateway_ingestion_path}/batches",
+                    int((time.time() - t_start) * 1000),
+                )
+                resp.raise_for_status()
+                batch_id = resp.json()["batch_id"]
+                logger.debug(f"Created ingestion batch {batch_id} for {len(group)} files")
+
+                # Step 2: Upload every file into the batch.
+                upload_url = f"{self.ingestion_base}/batches/{batch_id}/files"
+                for file_path, document_id in group:
+                    file_metadata = base_metadata.copy()
+                    file_metadata["document_id"] = document_id
+                    with open(file_path, "rb") as f:
+                        files = {"file": (os.path.basename(file_path), f, "text/markdown")}
+                        data = {
+                            "source_path": file_path,
+                            "user_metadata": json.dumps(file_metadata),
+                            "kb_id": self.settings.eval_knowledge_base,
+                        }
+                        t_start = time.time()
+                        resp = client.post(upload_url, files=files, data=data)
+                        APIProfiler.get_instance().record_call(
+                            f"{self.settings.gateway_ingestion_path}/batches/{{id}}/files",
+                            int((time.time() - t_start) * 1000),
+                        )
+                        resp.raise_for_status()
+
+                # Step 3: Poll the batch once until all files are terminal.
+                batch_status_url = f"{self.ingestion_base}/batches/{batch_id}"
+                max_polls = max(30, len(group) * 10)
+                for _ in range(max_polls):
+                    t_start = time.time()
+                    resp = client.get(batch_status_url)
+                    APIProfiler.get_instance().record_call(
+                        f"{self.settings.gateway_ingestion_path}/batches/{{id}}",
+                        int((time.time() - t_start) * 1000),
+                    )
+                    resp.raise_for_status()
+                    files_list = resp.json().get("files", [])
+                    if files_list and all(
+                        f.get("status") in ["completed", "failed", "error"]
+                        for f in files_list
+                    ):
+                        break
+                    time.sleep(2.0)
+
+                logger.info(
+                    f"Ingested batch {batch_id} ({len(group)} files) via Gateway."
+                )
+        except Exception as e:
+            logger.error(f"Gateway HTTP Error ingesting batch ({len(group)} files): {e}")
             raise
 
 

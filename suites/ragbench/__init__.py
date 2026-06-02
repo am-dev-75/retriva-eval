@@ -23,20 +23,22 @@ from .ingest import do_ingest
 from .run import do_run
 from .evaluate import do_evaluate
 
-@register_suite("ragas_amnesty_qa")
-class RagasAmnestyQASuite(BaseSuite):
-    
+
+@register_suite("ragbench")
+class RagbenchSuite(BaseSuite):
+
     def prepare(self, settings: Settings, run_id: str, dry_run: bool, portion: float = 1.0, seed: Optional[int] = None) -> None:
         do_prepare(self.name, settings, run_id, dry_run, portion=portion, seed=seed)
-        
+
     def ingest(self, settings: Settings, run_id: str, dry_run: bool, portion: float = 1.0, seed: Optional[int] = None) -> None:
         do_ingest(self.name, settings, run_id, dry_run)
-        
+
     def run(self, settings: Settings, run_id: str, dry_run: bool, portion: float = 1.0, seed: Optional[int] = None) -> None:
         do_run(self.name, settings, run_id, dry_run)
-        
+
     def evaluate(self, settings: Settings, run_id: str, dry_run: bool, portion: float = 1.0, seed: Optional[int] = None) -> None:
         do_evaluate(self.name, settings, run_id, dry_run)
-        
+
     def report(self, settings: Settings, run_id: str, dry_run: bool, portion: float = 1.0, seed: Optional[int] = None) -> None:
+        # Per-subset breakdown is written by `evaluate.py`; nothing extra here.
         pass
