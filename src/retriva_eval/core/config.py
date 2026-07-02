@@ -42,6 +42,10 @@ class Settings(BaseSettings):
     eval_metadata_filtering_mode: str = "hard"
     eval_reports_dir: str = "reports"
     eval_fail_on_threshold_breach: bool = True
+    # When set, the email_ingestion suite rewrites the KB segment in
+    # recipient addresses so emails are routed to this KB instead of the
+    # one hardcoded in the dataset.  Also used as the query KB.
+    email_target_kb: Optional[str] = None
     # Bounded concurrency for I/O-bound stages. Set to 1 to force fully
     # sequential behaviour. These cap the number of in-flight network calls
     # against Retriva (ingestion), the chat/query endpoint, and the

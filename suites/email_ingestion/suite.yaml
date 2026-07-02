@@ -1,0 +1,54 @@
+name: email_ingestion
+version: 0.2.0
+description: >
+  Sends a configurable number of emails (randomly picked from a 100-message
+  dataset) to the retriva-email-agent-connector via swaks, then verifies that
+  each message was ingested into the Retriva knowledge base and that queries
+  about the email content are answered correctly.
+
+dataset:
+  source: local_jsonl
+  path: suites/email_ingestion/data/emails.jsonl
+  total_messages: 100
+
+sampling:
+  seed: 42
+
+# SMTP target (the retriva-email-agent-connector)
+# Override via EMAIL_EVAL_SMTP_HOST / EMAIL_EVAL_SMTP_PORT env vars
+smtp:
+  host: "127.0.0.1"
+  port: 8025
+  from_address: "eval@retriva-eval.local"
+  # The domain that the connector expects (must match address_domain config)
+  server_domain: "retriva-server.com"
+
+# Gateway for verification and querying
+# Override via EMAIL_EVAL_GATEWAY_HOST / EMAIL_EVAL_GATEWAY_PORT env vars
+# or via the global GATEWAY_BASE_URL setting
+gateway:
+  base_url: "http://localhost:8002"
+  chat_path: "/gateway/chat"
+  # Polling config for job completion
+  job_poll_interval_seconds: 2
+  job_timeout_seconds: 120
+  # KB to query (use "default" if no KB override in the address)
+  kb_id: "default"
+  # Metadata filter mode for scoped queries (hard = only retrieve chunks
+  # matching the message_id filter)
+  metadata_filter_mode: "hard"
+
+metrics:
+  - emails_sent
+  - emails_ingested
+  - ingestion_success_rate
+  - address_decode_accuracy
+  - queries_answered
+  - query_answer_rate
+  - query_relevance_rate
+
+thresholds:
+  ingestion_success_rate: 0.95
+  address_decode_accuracy: 0.95
+  query_answer_rate: 0.90
+  query_relevance_rate: 0.80

@@ -1,0 +1,7 @@
+name: email_ingestion_pipeline
+description: >
+  Pipeline for evaluating the retriva-email-agent-connector by sending emails
+  via swaks and verifying ingestion into the Retriva knowledge base.
+suites:
+  - name: email_ingestion
+    enabled: true
