@@ -33,7 +33,7 @@ class QdrantAdapter:
             
     def verify_collection(self) -> None:
         """Verify the collection exists. Fail fast if it does not."""
-        name = self.settings.qdrant_collection_name
+        name = self.settings.retriva_default_collection
         try:
             collections = self.client.get_collections().collections
             exists = any(c.name == name for c in collections)
@@ -58,15 +58,15 @@ class QdrantAdapter:
     def upsert_points(self, points: List[rest.PointStruct]) -> None:
         """Upsert raw points into Qdrant."""
         self.client.upsert(
-            collection_name=self.settings.qdrant_collection_name,
+            collection_name=self.settings.retriva_default_collection,
             points=points
         )
-        logger.info(f"Upserted {len(points)} points into '{self.settings.qdrant_collection_name}'")
+        logger.info(f"Upserted {len(points)} points into '{self.settings.retriva_default_collection}'")
 
     def safe_delete_collection(self) -> None:
         """Safety wrapper: MVP explicitly disables collection deletion."""
         logger.warning(
-            f"Deletion of collection '{self.settings.qdrant_collection_name}' is disabled in MVP "
+            f"Deletion of collection '{self.settings.retriva_default_collection}' is disabled in MVP "
             f"(mode: {self.settings.qdrant_lifecycle_mode})."
         )
         # We do not call self.client.delete_collection() here to enforce FR-004.

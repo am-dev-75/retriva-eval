@@ -64,7 +64,7 @@ class Settings(BaseSettings):
     # Qdrant
     qdrant_url: str = "http://localhost:6333"
     qdrant_api_key: Optional[str] = None
-    qdrant_collection_name: str = "retriva_eval_manual"
+    retriva_default_collection: str = "retriva_eval_manual"
     qdrant_vector_size: int = 1536
     qdrant_distance: str = "cosine"
     qdrant_lifecycle_mode: str = "manual_existing"
